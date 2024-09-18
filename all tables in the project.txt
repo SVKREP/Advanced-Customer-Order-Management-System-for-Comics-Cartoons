@@ -1,0 +1,80 @@
+create table customer(custID number PRIMARY KEY,name varchar2(10),phone number not null unique,address varchar2(15),custype varchar(10),CHECK (custype = 'regular' or custype = 'gold'));
+create table gold(custID number PRIMARY KEY,date_joined date,coupons number default 0,FOREIGN KEY (custID) REFERENCES customer(custID));
+create table storeItems(itemID number PRIMARY KEY,price number,no_of_copies number,check(no_of_copies > 0));
+create table comicbook(itemID number PRIMARY KEY,title varchar2(15),publishDate date,FOREIGN KEY (itemID) REFERENCES storeItems(itemID));
+create table cartoonmovie(itemID number PRIMARY KEY,title varchar(15),studio_name varchar(15),description varchar(50),FOREIGN KEY (itemID) REFERENCES storeItems(itemID));
+create table custorder(orderID number PRIMARY KEY,date_of_order date,shipped_date date default null,shipping_fee number,check(date_of_order < shipped_date) );
+create table orderplaced(custID number,itemID number,orderID number,FOREIGN KEY (itemID) REFERENCES storeItems(itemID),FOREIGN KEY (custID) REFERENCES customer(custID),FOREIGN KEY (orderID) REFERENCES custorder(orderID),PRIMARY KEY(custID,itemID,orderID));
+create table order_line_items(LineID number,itemID number,orderID number,quantity number,FOREIGN KEY (itemID) REFERENCES storeItems(itemID),FOREIGN KEY (orderID) REFERENCES custorder(orderID),PRIMARY KEY(LineID,itemID,orderID));
+
+==============================================================================================================
+
+insert into comicbook values(1,'spiderman','09/20/2000');
+insert into comicbook values(2,'ironman','02/20/2001');
+insert into comicbook values(3,'hulk','01/12/2004' );
+insert into comicbook values(4,'thor','10/25/2006');
+insert into comicbook values(5,'black panther','03/15/2008');
+insert into comicbook values(6,'vision','11/20/2002');
+insert into comicbook values(7,'groot','02/20/2005');
+insert into comicbook values(8,'gamora','04/01/2004' );
+insert into comicbook values(9,'antman','11/25/2002');
+insert into comicbook values(10,'strange','03/05/2000');
+
+==============================================================================================================
+
+insert into cartoonmovie values(11,'Avatar','20th Century','blue monkeys in different universe');
+insert into cartoonmovie values(12,'Titanic','20th Century','Ship broke into half because of a kiss');
+insert into cartoonmovie values(13,'King Kong','Warner Bros','Tales of a Big Monkey');
+insert into cartoonmovie values(14,'Tenet','Warner Bros','Everything in the world is reverse');
+insert into cartoonmovie values(15,'END GAME','Marvel Studios','I love you 3000');
+insert into cartoonmovie values(16,'Alita','20th Century','robotic girl has a powerful suit');
+insert into cartoonmovie values(17,'Iceage','20th Century','Crazy animals on ice');
+insert into cartoonmovie values(18,'Pacific Rim','Warner Bros','Monster vs Monster');
+insert into cartoonmovie values(19,'Venom','Warner Bros','A parasite eats humans');
+insert into cartoonmovie values(20,'Spiderman','Marvel Studios','With great power comes great responsibility');
+
+===============================================================================================================
+
+insert into customer values(1,'Krishna',5103406646,'50 Washington' ,'gold'   );
+insert into customer values(2,'vamsi'  ,5109804957,'52 Washington' ,'regular');
+insert into customer values(3,'Rama'   ,4515204527,'64 DDcolony'   ,'gold'   );
+insert into customer values(4,'satya'  ,6692959852,'21 DDcolony'   ,'regular');
+insert into customer values(5,'rahim'  ,8573849372,'48 DDcolony'   ,'gold'   );
+insert into customer values(6,'Anmol'  ,8800291506,'34 DDcolony'   ,'regular');
+insert into customer values(7,'Rohit'  ,4086404309,'40 SanJose'    ,'gold'   );
+insert into customer values(8,'Rohan'  ,4083298001,'30 SanJose'    ,'regular');
+insert into customer values(9,'nikhil' ,6692889391,'12 Washington' ,'gold'   );
+insert into customer values(10,'sucheet',7450064521,'10 Washington','regular');
+
+================================================================================================================
+     
+insert into storeitems values(1,60,30);
+insert into storeitems values(2,30,70);
+insert into storeitems values(3,80,60);
+insert into storeitems values(4,120,20);
+insert into storeitems values(5,100,30);
+insert into storeitems values(6,30,30);
+insert into storeitems values(7,70,70);
+insert into storeitems values(8,90,30);
+insert into storeitems values(9,100,40);
+insert into storeitems values(10,20,60);
+insert into storeitems values(11,60,30);
+insert into storeitems values(12,70,70);
+insert into storeitems values(13,80,60);
+insert into storeitems values(14,120,20);
+insert into storeitems values(15,10,30);
+insert into storeitems values(16,30,30);
+insert into storeitems values(17,70,70);
+insert into storeitems values(18,90,30);
+insert into storeitems values(19,100,40);
+insert into storeitems values(20,20,60);
+
+=================================================================================================================
+
+
+
+
+
+
+
+

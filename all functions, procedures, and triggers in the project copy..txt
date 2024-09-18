@@ -1,0 +1,644 @@
+==========================================================================
+==========================================================================
+TRIGGER
+
+if any gold entry is inserted then it adds to the golden memebers table.
+and even if we update a "regular" member to gold, the new gold member 
+will be added to the golden memeber table.
+--------------------------------------------------------------------------
+create trigger gold_entries
+after insert or update of custype on customer
+for each row
+when(new.custype = 'gold')
+begin
+insert into gold(custID,date_joined) values(:new.custID,CURRENT_TIMESTAMP);
+end;
+/ 
+==========================================================================
+==========================================================================
+FUNCTION
+
+answer to question b. 
+the following function will return the orderid which is generated randomly.
+--------------------------------------------------------------------------
+create function createCustOrder
+return number is
+random_number number;
+begin
+random_number := round(dbms_random.value(0,2147483648),0);
+return random_number;
+end;
+/
+
+
+begin
+dbms_output.put_line(' your order number is ' || createCustOrder);
+end;
+/
+
+==========================================================================
+==========================================================================
+PROCEDURE
+
+This procedure is created to create a order and place the values inside the 
+orderplaced table
+It take input parameters of custID, list of itemID 
+In this we will create a order saying that the particular customer(custID) 
+has ordered that particular store items(list of itemID)
+
+--------------------------------------------------------------------------
+CREATE OR REPLACE TYPE MyType AS VARRAY(10) OF number;
+/
+
+create procedure make_order(cID IN number,itemList Mytype)
+AS
+i number;
+cusordID number;
+c_type varchar2(10);
+s_fee number;
+Begin
+i:= 0;
+cusordID := createCustOrder;
+dbms_output.put_line(' ---------------------------------------- ');
+dbms_output.put_line(' your order number is ' || cusordID);
+dbms_output.put_line(' ---------------------------------------- ');
+
+select custype into c_type from customer where custID = cID; 
+
+if c_type = 'gold' then 
+	s_fee := 0;
+else
+	s_fee := 10;
+end if;
+
+insert into custorder values(cusordID,CURRENT_TIMESTAMP,null,s_fee);
+for i in 1..itemList.count loop
+	insert into orderplaced values(cID,itemList(i),cusordID);
+end loop;
+end;
+/
+
+-----------------------------------------------------------------------------
+
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(4);
+	t(1) := 1;
+	t(2) := 10;
+	t(3) := 16;
+	t(4) := 17;
+	make_order(1,t);
+end;
+/
+------------------------------------
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(3);
+	t(1) := 5;
+	t(2) := 6;
+	t(3) := 12;
+	make_order(3,t);
+end;
+/
+-----------------------------------
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(2);
+	t(1) := 2;
+	t(2) := 15;
+	make_order(4,t);
+end;
+/
+------------------------------------
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(3);
+	t(1) := 8;
+	t(2) := 13;
+	t(3) := 20;
+	make_order(6,t);
+end;
+/
+-----------------------------------
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(3);
+	t(1) := 9;
+	t(2) := 11;
+	t(3) := 17;
+	make_order(1,t);
+end;
+/
+------------------------------------
+Declare
+	t Mytype;
+begin
+	t := Mytype();
+	t.EXTEND(1);
+	t(1) := 5;
+	make_order(5,t);
+end;
+/
+------------------------------------orders given.
+==========================================================================
+==========================================================================
+PROCEDURE
+
+This procedure is the answer for c.
+This procedure is to create the orderline items for the order, it taked in
+the custID, OrderID, the list of item IDs,the quantity of each item parallely,
+with the shipping date as well. 
+If the quantity of the ordered item is more than available then it will display
+as "CANNOT PROCEED WITH THE ORDER".
+Since, the shippedDate is already made null by default while creating the table,
+I will consider that.
+
+--------------------------------------------------------------------------
+create procedure createOrderLineItem(cID IN number,itemList Mytype,quantity Mytype,custorderID number)
+As
+
+i number;
+flag number;
+copies number;
+c number;
+cust_type varchar2(10);
+
+begin
+
+flag := 0; 
+for i in 1..itemList.count loop
+	select no_of_copies into copies from storeItems where itemID = itemList(i);
+	IF copies < quantity(i) THEN
+		dbms_output.put_line('CANNOT PROCEED WITH THE ORDER');
+		delete from orderplaced where orderID = custorderID;
+		delete from custorder where orderID = custorderID;
+		flag := 1;
+		EXIT;
+	END IF;
+end loop;
+
+if flag = 0 then
+	select custype into cust_type from customer where custID = cID;
+	
+	if cust_type = 'gold' then 
+		Update custorder set shipping_fee = 0 where orderID = custorderID;
+	else
+		Update custorder set shipping_fee = 10 where orderID = custorderID;	
+	end if;
+	
+	i:=0;
+	for i in 1..itemList.count loop
+		insert into order_line_items values(i,itemList(i),custorderID,quantity(i));
+		select no_of_copies into copies from storeItems where itemID = itemList(i);
+		c := copies - quantity(i);
+		update storeItems set no_of_copies = c where itemID = itemList(i);
+	end loop;
+end if;
+
+end;
+/
+--------------------------------------------------------------------------------------
+
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(4);
+	item(1) := 1;
+	item(2) := 10;
+	item(3) := 16;
+	item(4) := 17; 	
+	
+	quantity := Mytype();
+	quantity.EXTEND(4);
+	quantity(1) := 3;
+	quantity(2) := 2;
+	quantity(3) := 1;
+	quantity(4) := 1;
+	
+	
+	createOrderLineItem(1,item,quantity, 909185113);
+end;
+/
+--------------------------------------------------------------------------------------
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(3);
+	item(1) := 5;
+	item(2) := 6;
+	item(3) := 12; 	
+	
+	quantity := Mytype();
+	quantity.EXTEND(3);
+	quantity(1) := 5;
+	quantity(2) := 4;
+	quantity(3) := 2;
+	
+	createOrderLineItem(3,item,quantity, 1712960601);
+end;
+/
+----------------------------------------------------------------------------------
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(2);
+	item(1) := 2;
+	item(2) := 15; 	
+	
+	quantity := Mytype();
+	quantity.EXTEND(2);
+	quantity(1) := 1;
+	quantity(2) := 1;
+
+	
+	createOrderLineItem(4,item,quantity,  523559599);
+end;
+/
+---------------------------------------------------------------------------------
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(3);
+	item(1) := 8;
+	item(2) := 13;
+	item(3) := 20;	
+	
+	quantity := Mytype();
+	quantity.EXTEND(3);
+	quantity(1) := 2;
+	quantity(2) := 4;
+	quantity(3) := 1;
+
+	
+	createOrderLineItem(6,item,quantity, 914276508);
+end;
+/
+---------------------------------------------------------------------------------
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(3);
+	item(1) := 9;
+	item(2) := 11;
+	item(3) := 17; 	
+	
+	quantity := Mytype();
+	quantity.EXTEND(3);
+	quantity(1) := 2;
+	quantity(2) := 3;
+	quantity(3) := 1;
+
+	
+	createOrderLineItem(1,item,quantity,  1761042575);
+end;
+/
+---------------------------------------------------------------------------------
+Declare
+	item Mytype;
+	quantity Mytype;
+begin
+	item := Mytype();
+	item.EXTEND(1);
+	item(1) := 5;
+	
+	quantity := Mytype();
+	quantity.EXTEND(1);
+	quantity(1) := 100;
+	
+	createOrderLineItem(5,item,quantity, 330819623);
+end;
+/
+---------------------------------------------------------------------------------orders given completely
+==========================================================================
+==========================================================================
+TRIGGER
+
+if any gold entry is inserted then it adds to the golden memebers table.
+and even if we update a "regular" member to gold, the new gold member 
+will be added to the golden memeber table.
+--------------------------------------------------------------------------
+create trigger gold_update
+after update of custype on customer
+for each row
+when(new.custype = 'gold')
+
+Declare 
+
+order_number number;
+CURSOR c is select distinct(orderID) from orderplaced where custID = :new.custID;
+s date;
+Begin
+open c;
+
+LOOP
+	FETCH c into order_number;
+	EXIT WHEN c%notfound; 
+	
+	update custorder set shipping_fee = 0 where orderID = order_number and shipped_date is NULL;	
+	
+end LOOP;
+CLOSE c;
+end;
+/
+
+===========================================================================
+===========================================================================
+PROCEDURE
+
+This procedure is the answer for e, setShippingDate(), it takes the parameters
+as orderId and shipping date.
+--------------------------------------------------------------------------
+create procedure setShippingDate(o IN number,s_d IN date)
+As
+begin 
+update custorder set shipped_date = s_d where orderID = o;
+end;
+/
+--------------------------
+begin
+setShippingDate( 909185113,'12/03/2022');
+setShippingDate(1712960601,'12/05/2022');
+setShippingDate(523559599,'12/05/2022');
+setShippingDate(914276508,'12/07/2022');
+setShippingDate(1761042575,'12/04/2022');
+end;
+/
+===========================================================================
+===========================================================================
+FUNCTION 
+
+
+This function is used to compute the total cost of the customer order.	
+It takes the parameter orderID and computes the total cost
+---------------------------------------------------------------------------
+create function computeTotal(o IN number)
+return number is
+
+total number := 0;
+ct number := 0;
+q number := 0;
+p number:= 0;
+x number := 0;
+i number:= 0;
+t varchar2(10) := '';
+pick number;
+
+begin 
+
+select count(itemID) into ct from order_line_items where orderID = o;
+
+for i in 1..ct loop
+	select itemID,quantity into x,q from order_line_items where orderID = o and LineID = i;
+	select price into p from storeItems where itemID = x;
+	total := total + (p*q);
+end loop;
+
+dbms_output.put_line(' total of all items          = ' || total);
+
+select custype into t from customer where custID = (select distinct(custID) from orderplaced where orderID = o);
+
+if t = 'gold' then
+	if total >= 100 then 
+		pick := (0.1*total);
+		total := total - pick;
+		dbms_output.put_line(' DISCOUNT FOR GOLDEN MEMBER  = ' || pick);
+		dbms_output.put_line(' AFTER discount              = ' || total);
+		
+	end if;
+end if;
+
+
+
+select shipping_fee into x from custorder where orderid = o;
+dbms_output.put_line(' Shipping charges            = ' || x);
+total := total + x;
+dbms_output.put_line(' AFTER shipping  fee         = ' || total);
+
+
+pick := (0.05*total);
+total := total + pick;
+dbms_output.put_line(' TAX 5%                      = ' || pick);
+
+dbms_output.put_line(' AFTER tax                   = ' || total);
+dbms_output.put_line('------------------------------------------');
+return total;
+end;
+/
+--------------------------------------------------------------------------
+begin
+dbms_output.put_line('***********************************************');
+    dbms_output.put_line(' total cost : ' || computetotal(909185113));
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+     dbms_output.put_line(' total cost : ' || computetotal(1712960601));
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+    dbms_output.put_line(' total cost : ' || computetotal(523559599));
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+     dbms_output.put_line(' total cost : ' || computetotal(914276508));
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+    dbms_output.put_line(' total cost : ' || computetotal(1761042575));
+dbms_output.put_line('***********************************************');
+end;
+/
+
+
+===========================================================================
+===========================================================================
+PROCEDURE
+
+This procedure is the answer to g.
+It will display the details of customer, details of all items and the payment 
+details of that particular orderid.
+
+drop procedure showitemorders;
+-----------------------------------------------------------------------------------
+create procedure showitemorders(o in number)
+As
+
+cus number;
+c_name varchar2(20);
+c_phone number;
+c_address varchar2(50);
+c_type varchar2(10);
+
+
+cursor c1 is select lineID,quantity,itemID,title,publishdate from order_line_items natural join comicbook where orderID = o;
+cursor c2 is select lineID,quantity,itemID,title,studio_name,description from order_line_items natural join cartoonmovie where orderID = o;
+
+lid number;
+q number;
+iid number;
+t varchar2(15);
+
+pd date;
+
+sn varchar2(15);
+desi varchar2(50);
+
+pp number;
+
+vcount number:=0;
+
+begin
+
+select custID,name,phone,address,custype into cus,c_name,c_phone,c_address,c_type from customer where custID = (select distinct(custID)  from orderplaced where orderID = o);
+
+dbms_output.put_line(' Customer ID      = ' || cus);
+dbms_output.put_line(' Customer name    = ' || c_name);
+dbms_output.put_line(' Customer phone   = ' || c_phone);
+dbms_output.put_line(' Customer address = ' || c_address);
+dbms_output.put_line(' Customer type    = ' || c_type );
+dbms_output.put_line('----------------------------------------------------------------------');
+dbms_output.put_line(' List of items with its details ');
+dbms_output.put_line('----------------------------------------------------------------------');
+dbms_output.put_line(' COMIC BOOKS' );
+dbms_output.put_line('---------');
+open c1;
+loop
+	fetch c1 into lid,q,iid,t,pd;
+	EXIT when c1%notfound;
+	vcount := vcount+1;
+	select price into pp from storeitems where itemid = iid; 
+	dbms_output.put_line(' Line number       = ' || lid);
+	dbms_output.put_line(' item number       = ' || iid);
+	dbms_output.put_line(' title             = ' || t);
+	dbms_output.put_line(' publish date      = ' || pd);	
+	dbms_output.put_line(' price per item    = ' || pp);	
+	dbms_output.put_line(' quantity          = ' || q);
+	dbms_output.put_line('---------');
+
+end loop;
+close c1;
+
+dbms_output.put_line('-----------------------------------------------------------------------');
+dbms_output.put_line(' CARTOON MOVIES' );
+dbms_output.put_line('-----------------');
+vcount:=0;
+
+open c2;
+loop
+	fetch c2 into lid,q,iid,t,sn,desi;
+	EXIT when c2%notfound;
+	vcount := vcount+1;
+	select price into pp from storeitems where itemid = iid; 
+	dbms_output.put_line(' Line number       = ' || lid);
+	dbms_output.put_line(' item number       = ' || iid);
+	dbms_output.put_line(' title             = ' || t);
+	dbms_output.put_line(' studio name       = ' || sn);	
+	dbms_output.put_line(' description       = ' || desi);	
+	dbms_output.put_line(' price per item    = ' || pp);	
+	dbms_output.put_line(' quantity          = ' || q);
+	dbms_output.put_line('---------');
+
+end loop;
+close c2;
+dbms_output.put_line('------------------------------------------------------');
+dbms_output.put_line(' Grand total                 = ' || computetotal(o));
+dbms_output.put_line('------------------------------------------------------');
+end;
+/
+---------------------------------------------------------------------------
+begin
+dbms_output.put_line('***********************************************');
+showitemorders(909185113);
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+showitemorders(1712960601);
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+showitemorders(523559599);
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+showitemorders(914276508);
+dbms_output.put_line('***********************************************');
+end;
+/
+
+begin
+dbms_output.put_line('***********************************************');
+showitemorders(1761042575);
+dbms_output.put_line('***********************************************');
+end;
+/
+
+==========================================================================
+==========================================================================
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
